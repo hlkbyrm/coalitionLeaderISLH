@@ -555,6 +555,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
 
     if (infoType == INFO_L2C_INSUFFICIENT_RESOURCE)
     {
+        msg.senderRobotID = ownRobotID;
         msg.taskUUID = waitingTasks.at(0).taskUUID.toStdString();
         msg.posX = waitingTasks.at(0).pose.X;
         msg.posY = waitingTasks.at(0).pose.Y;
@@ -563,6 +564,8 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
     }
     else if ( (infoType == INFO_L2C_START_HANDLING) || (infoType == INFO_L2C_TASK_COMPLETED) )
     {
+        msg.senderRobotID = ownRobotID;
+
         msg.taskUUID = handlingTask.taskUUID.toStdString();
     }
     else if (infoType == INFO_L2C_SPLITTING)
@@ -575,6 +578,8 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
             if (i<splitRobotIDList.size()-1)
                 splittingMsg.append(",");
         }
+
+        msg.senderRobotID = ownRobotID;
 
         // this message contains the robot IDs to be splitted from the coalition
         msg.extraMsg = splittingMsg.toStdString();
