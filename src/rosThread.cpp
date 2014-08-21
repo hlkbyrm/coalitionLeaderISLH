@@ -137,7 +137,7 @@ void RosThread::manageCoalition()
                     handlingTask.status = 1;
 
                     // inform the coordinator of the starting of the handling
-                    sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING);
+                    sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
 
                     currentState = CS_HANDLING;
                 }
@@ -232,19 +232,44 @@ void RosThread::check4ExcessiveResource()
 
             if (splittedRobotIndx>-1)
             {
+                // update the coalition resources due to the splitting
+                for(int resID=0; resID<coalTotalResources.size(); resID++)
+                {
+                    coalTotalResources.at[resID] = coalTotalResources.at[resID] - coalMembersTmp.at(splittedRobotIndx).resources.at(resID);
+                }
+
                 splitRobotIDList.append(coalMembersTmp.at(splittedRobotIndx).robotID);
+
+                // remove the splitted robot from the coalition
                 coalMembersTmp.remove(splittedRobotIndx);
+
             }
         }
 
 
         if (splitRobotIDList.size()>0)
         {
+
+            //since the leader will ve removed from the coalition,
+            //select new leader such that it has the smallest robot ID value
+            newLeaderID = 9999;
+            for(int i = 0; i < coalMembers.size();i++)
+            {
+                int robID = coalMembers.at(i).robotID;
+                if ((robID != ownRobotID) && (robID < newLeaderID))
+                {
+                    for(int j = 0; j < splitRobotIDList.size();j++)
+                    {
+                        if (robID != splitRobotIDList.at(j))
+                        {
+                            newLeaderID = robID;
+                        }
+                    }
+                }
+            }
+
             // inform the splitted robots of the splittng operation
             sendCmd2Robots(CMD_L2R_SPLIT_FROM_COALITION);
-
-            // inform the coordinator of the splittings
-            sendTaskInfo2Coordinator(INFO_L2C_SPLITTING);
 
             //check whether one of the splitted robots is the coalition leader
             // if yes, select the robot with the smallest robotID as the coalition leader
@@ -252,11 +277,17 @@ void RosThread::check4ExcessiveResource()
             {
                 sendCmd2Robots(CMD_L2R_LEADER_CHANGED);
 
-                sendTaskInfo2Coordinator(INFO_L2C_LEADER_CHANGED);
+                sendTaskInfo2Coordinator(INFO_L2C_SPLITTING_AND_LEADER_CHANGED);
 
                 isCoalitionLeader = false;
 
             }
+            else
+            {
+                // inform the coordinator of the splittings
+                sendTaskInfo2Coordinator(INFO_L2C_SPLITTING);
+            }
+
         }
 
     }
@@ -373,26 +404,10 @@ void RosThread::sendCmd2Robots(int cmdType)
     }
     else if (cmdType == CMD_L2R_LEADER_CHANGED)
     {
-        //since the leader will ve removed from the coalition,
-        //select new leader such that it has the smallest robot ID value
-        int minID = 9999;
-        for(int i = 0; i < coalMembers.size();i++)
-        {
-            int robID = coalMembers.at(i).robotID;
-            if ((robID != ownRobotID) && (robID < minID))
-            {
-                for(int j = 0; j < splitRobotIDList.size();j++)
-                {
-                    if (robID != splitRobotIDList.at(j))
-                    {
-                        minID = robID;
-                    }
-                }
-            }
-        }
+
 
          QString messageStr = "NewLeaderID";
-         messageStr.append(QString::number(minID));
+         messageStr.append(QString::number(newLeaderID));
 
          messageStr.append(":");
 
@@ -561,14 +576,34 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         msg.posY = waitingTasks.at(0).pose.Y;
         msg.encounteringTime = waitingTasks.at(0).encounteringTime;
         msg.taskResource = waitingTasks.at(0).requiredResourcesString.toStdString();
+        msg.encounteringRobotID = waitingTasks.at(0).encounteringRobotID;
     }
-    else if ( (infoType == INFO_L2C_START_HANDLING) || (infoType == INFO_L2C_TASK_COMPLETED) )
+    else if (infoType == INFO_L2C_START_HANDLING_WITH_TASK_INFO)
+    {
+        msg.senderRobotID = ownRobotID;
+        msg.taskUUID = waitingTasks.at(0).taskUUID.toStdString();
+        msg.posX = waitingTasks.at(0).pose.X;
+        msg.posY = waitingTasks.at(0).pose.Y;
+        msg.encounteringTime = waitingTasks.at(0).encounteringTime;
+        msg.startHandlingTime = waitingTasks.at(0).startHandlingTime;
+        msg.taskResource = waitingTasks.at(0).requiredResourcesString.toStdString();
+        msg.encounteringRobotID = waitingTasks.at(0).encounteringRobotID;
+    }
+    else if (infoType == INFO_L2C_START_HANDLING)
+    {
+        msg.senderRobotID = ownRobotID;
+
+        msg.startHandlingTime = waitingTasks.at(0).startHandlingTime;
+
+        msg.taskUUID = handlingTask.taskUUID.toStdString();
+    }
+   else if (infoType == INFO_L2C_TASK_COMPLETED)
     {
         msg.senderRobotID = ownRobotID;
 
         msg.taskUUID = handlingTask.taskUUID.toStdString();
     }
-    else if (infoType == INFO_L2C_SPLITTING)
+    else if ( (infoType == INFO_L2C_SPLITTING) || (INFO_L2C_SPLITTING_AND_LEADER_CHANGED) )
     {
         QString splittingMsg;
 
@@ -577,6 +612,13 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
             splittingMsg.append(QString::number(splitRobotIDList.at(i)));
             if (i<splitRobotIDList.size()-1)
                 splittingMsg.append(",");
+        }
+
+        // if this robot, coalition leader, is splitted,
+        // the splitted leader ID is added to the end of splitRobotIDList
+        if (infoType == INFO_L2C_SPLITTING_AND_LEADER_CHANGED)
+        {
+            splittingMsg.append(QString::number(newLeaderID));
         }
 
         msg.senderRobotID = ownRobotID;

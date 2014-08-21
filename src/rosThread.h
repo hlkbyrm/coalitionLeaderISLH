@@ -13,12 +13,13 @@
 #include <messageDecoderISLH/taskInfoFromRobotMessage.h>
 #include <messageDecoderISLH/newLeaderMessage.h>
 
-enum CoalitionState
+enum CoalitionStatus
 {
     CS_IDLE = 0,
     CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR = 1,
     CS_SUCCORING = 2,
-    CS_HANDLING = 3
+    CS_HANDLING = 3,
+    CS_WAITING_GOAL_POSE = 4
 };
 
 enum Leader2RobotCmdMsgs
@@ -34,9 +35,10 @@ enum Leader2CoordinatorInfoMgs
 {
     INFO_L2C_INSUFFICIENT_RESOURCE = 1,
     INFO_L2C_START_HANDLING = 2,
-    INFO_L2C_TASK_COMPLETED = 3,
-    INFO_L2C_SPLITTING = 4,
-    INFO_L2C_LEADER_CHANGED = 5
+    INFO_L2C_START_HANDLING_WITH_TASK_INFO = 3,
+    INFO_L2C_TASK_COMPLETED = 4,
+    INFO_L2C_SPLITTING = 5,
+    INFO_L2C_SPLITTING_AND_LEADER_CHANGED = 6
 };
 
 
@@ -116,6 +118,8 @@ private:
 
      int coordinatorRobotID;
 
+     int newLeaderID;
+
      //QVector <taskProp> newTasksList;
 
      QVector <taskProp> waitingTasks;
@@ -132,7 +136,7 @@ private:
 
      coalValFuncParams cvfParams; // the parameters w1, w2, w3, adn ro in the coalition value function
 
-     CoalitionState currentState;
+     CoalitionStatus currentState;
 
      QVector <poseXY> goalPoses;
 
