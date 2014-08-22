@@ -44,7 +44,8 @@ enum Leader2CoordinatorInfoMgs
 
 enum Coordinator2LeaderCmdMsgs
 {
-    CMD_C2L_COALITION_MEMBERS = 1
+    CMD_C2L_COALITION_MEMBERS = 1,
+    CMD_C2L_LEADER_CHANGE = 2
 };
 
 struct coalValFuncParams{
@@ -70,7 +71,7 @@ struct robotProp{
 // task properties
 struct taskProp{
   QString taskUUID;
-  uint64_t encounteringTime; // in timestamp - "the time when the task is encountered"
+  uint encounteringTime; // in timestamp - "the time when the task is encountered"
   uint responsibleUnit;  // "who is responsible for the task"
   uint encounteringRobotID;  // "Id of the robot encountering the task"
   uint handlingDuration; // in seconds - "the required time to handle the task"
