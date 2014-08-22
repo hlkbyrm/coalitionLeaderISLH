@@ -294,6 +294,17 @@ void RosThread::check4ExcessiveResource()
 
 }
 
+// calculate coalition's total resources
+void  RosThread::calcCoalTotalResources(){
+    coalTotalResources.clear();
+
+    for(int robID=0;robID<coalMembers.size();robID++){
+        for(int resID=0;resID<coalMembers.at(robID).resources.size();resID++){
+            coalTotalResources[resID] += coalMembers.at(robID).resources.at(resID);
+        }
+    }
+}
+
 // calculate the value of a given coaltion coalMmbrs
 double RosThread::calcCoalValue(QVector <robotProp> coalMmbrs)
 {
@@ -427,6 +438,7 @@ void RosThread::sendCmd2Robots(int cmdType)
                      if (robID == splitRobotIDList.at(j))
                      {
                          robID = -1;
+                         break;
                      }
                  }
 
@@ -450,31 +462,27 @@ void RosThread::sendCmd2Robots(int cmdType)
              }
          }
 
-         messageStr.append(":");
-
-         messageStr.append(QString::number(waitingTasks.size()));
-
 
          //send also the new leader the waiting tasks' info
          for(int wti = 0; wti < waitingTasks.size();wti++)
          {
              messageStr.append(":");
 
-             messageStr.append(waitingTasks.at(0).taskUUID);
+             messageStr.append(waitingTasks.at(wti).taskUUID);
              messageStr.append(";");
-             messageStr.append(QString::number(waitingTasks.at(0).pose.X));
+             messageStr.append(QString::number(waitingTasks.at(wti).pose.X));
              messageStr.append(";");
-             messageStr.append(QString::number(waitingTasks.at(0).pose.Y));
+             messageStr.append(QString::number(waitingTasks.at(wti).pose.Y));
              messageStr.append(";");
-             messageStr.append(QString::number(waitingTasks.at(0).encounteringRobotID));
+             messageStr.append(QString::number(waitingTasks.at(wti).encounteringRobotID));
              messageStr.append(";");
-             messageStr.append(QString::number(waitingTasks.at(0).handlingDuration));
+             messageStr.append(QString::number(waitingTasks.at(wti).handlingDuration));
              messageStr.append(";");
-             messageStr.append(QString::number(waitingTasks.at(0).timeOutDuration));
+             messageStr.append(QString::number(waitingTasks.at(wti).timeOutDuration));
              messageStr.append(";");
-             messageStr.append(waitingTasks.at(0).requiredResourcesString);
+             messageStr.append(waitingTasks.at(wti).requiredResourcesString);
              messageStr.append(";");
-             messageStr.append(QString::number(waitingTasks.at(0).encounteringTime));
+             messageStr.append(QString::number(waitingTasks.at(wti).encounteringTime));
          }
 
 
@@ -512,13 +520,15 @@ void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorM
 
     if (msg.messageTypeID = CMD_C2L_COALITION_MEMBERS)
     {
+        // now this robot is the coalition leader
+        isCoalitionLeader = true;
 
         // clear all the members
         coalMembers.clear();
 
         QString msgStr = QString::fromStdString(msg.message);
 
-        // msgStr = robotID1;isLeader;res1,res2,..,resn;posex,posey:robotID2;res1,res2,...,resn;posex,posey
+        // msgStr = robotID1;res1,res2,..,resn;posex,posey:robotID2;res1,res2,...,resn;posex,posey
 
         QStringList coalMemList = msgStr.split(":",QString::SkipEmptyParts);
         qDebug()<<"Number of coalition members"<<coalMemList.size();
@@ -531,18 +541,13 @@ void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorM
 
             robotTmp.robotID = coalMemPropStr.at(0).toInt();
 
-            if ( (coalMemPropStr.at(1).toUInt()==1) && (ownRobotID == robotTmp.robotID) )
-            {
-                isCoalitionLeader = true;
-            }
-
-            QStringList coalMemResStr = coalMemPropStr.at(2).split(",",QString::SkipEmptyParts);
+            QStringList coalMemResStr = coalMemPropStr.at(1).split(",",QString::SkipEmptyParts);
             for(int j = 0; j < coalMemResStr.size();j++)
             {
                robotTmp.resources.append(coalMemResStr.at(j).toDouble());
             }
 
-            QStringList coalMemPoseStr = coalMemPropStr.at(3).split(",",QString::SkipEmptyParts);
+            QStringList coalMemPoseStr = coalMemPropStr.at(2).split(",",QString::SkipEmptyParts);
             robotTmp.pose.X = coalMemPoseStr.at(0).toDouble();
             robotTmp.pose.Y = coalMemPoseStr.at(1).toDouble();
 
@@ -550,13 +555,16 @@ void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorM
             coalMembers.append(robotTmp);
         }
 
+        // calculate new coalition total resources
+        calcCoalTotalResources();
+    }
+    else if (msg.messageTypeID = CMD_C2L_LEADER_CHANGE)
+    {
+        QString msgStr = QString::fromStdString(msg.message);
 
-        // if the robot is not coalition leader, then ignore this message
-        if (isCoalitionLeader==false)
-        {
-            coalMembers.clear();
+        if(msgStr.toInt() == 1){
+            isCoalitionLeader = false;
         }
-
     }
 }
 
@@ -673,7 +681,48 @@ void RosThread::handleNewLeaderMessage(messageDecoderISLH::newLeaderMessage msg)
 
         coalMembers.clear();
 
+        QStringList messageParts = QString::fromStdString(msg.infoMessage).split(":",QString::SkipEmptyParts);
+        int coalMemberCount = messageParts.at(1).toInt();
+        int messagePartIdx = 2;
+        for(; messagePartIdx < coalMemberCount + 2; messagePartIdx++){
+            QStringList robotMessageParts = messageParts.at(messagePartIdx).split(";",QString::SkipEmptyParts);
+            robotProp robot;
 
+            robot.robotID = robotMessageParts.at(0).toUInt();
+
+            QStringList resourceMessageParts = robotMessageParts.at(1).split(",",QString::SkipEmptyParts);
+            for(int i=0;i<resourceMessageParts.size();i++)
+                robot.resources[i] = resourceMessageParts.at(i).toDouble();
+
+            QStringList positionMessageParts = robotMessageParts.at(2).split(",",QString::SkipEmptyParts);
+            robot.pose.X = positionMessageParts.at(0).toInt();
+            robot.pose.Y = positionMessageParts.at(1).toInt();
+
+            coalMembers.append(robot);
+        }
+
+        waitingTasks.clear();
+
+        for(; messagePartIdx < messageParts.size(); messagePartIdx++){
+            QStringList taskMessageParts = messageParts.at(messagePartIdx).split(";",QString::SkipEmptyParts);
+            taskProp task;
+
+            task.taskUUID = taskMessageParts.at(0);
+            task.pose.X = taskMessageParts.at(1).toInt();
+            task.pose.Y = taskMessageParts.at(2).toInt();
+            task.encounteringRobotID = taskMessageParts.at(3).toUInt();
+            task.handlingDuration = taskMessageParts.at(4).toUInt();
+            task.timeOutDuration = taskMessageParts.at(5).toUInt();
+            task.requiredResourcesString = taskMessageParts.at(6);
+
+            QStringList newTaskRRList = task.requiredResourcesString.split(",",QString::SkipEmptyParts);
+            for(int i = 0; i < newTaskRRList.size();i++)
+                task.requiredResources.append(newTaskRRList.at(i).toDouble());
+
+            task.encounteringTime = taskMessageParts.at(7).toUInt();
+
+            waitingTasks.append(task);
+        }
     }
 }
 

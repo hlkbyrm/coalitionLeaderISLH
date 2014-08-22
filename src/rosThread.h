@@ -70,7 +70,7 @@ struct robotProp{
 // task properties
 struct taskProp{
   QString taskUUID;
-  uint encounteringTime; // in timestamp - "the time when the task is encountered"
+  uint64_t encounteringTime; // in timestamp - "the time when the task is encountered"
   uint responsibleUnit;  // "who is responsible for the task"
   uint encounteringRobotID;  // "Id of the robot encountering the task"
   uint handlingDuration; // in seconds - "the required time to handle the task"
@@ -157,6 +157,8 @@ private:
      void handleNewLeaderMessage(messageDecoderISLH::newLeaderMessage msg);
 
      bool readConfigFile(QString filename);
+
+     void calcCoalTotalResources();
 
 public slots:
      void work();
