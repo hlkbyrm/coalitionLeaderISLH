@@ -235,7 +235,7 @@ void RosThread::check4ExcessiveResource()
                 // update the coalition resources due to the splitting
                 for(int resID=0; resID<coalTotalResources.size(); resID++)
                 {
-                    coalTotalResources.at[resID] = coalTotalResources.at[resID] - coalMembersTmp.at(splittedRobotIndx).resources.at(resID);
+                    coalTotalResources[resID] = coalTotalResources.at(resID) - coalMembersTmp.at(splittedRobotIndx).resources.at(resID);
                 }
 
                 splitRobotIDList.append(coalMembersTmp.at(splittedRobotIndx).robotID);
