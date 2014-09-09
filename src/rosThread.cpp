@@ -376,7 +376,7 @@ void RosThread::sendCmd2Robots(int cmdType)
 
         for(int i = 0; i < coalMembers.size();i++)
         {
-            msg.receiverRobotID[i] = coalMembers.at(i).robotID;
+            msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
         }
     }
     else if (cmdType == CMD_L2R_MOVE_TO_TASK_SITE)
@@ -394,12 +394,16 @@ void RosThread::sendCmd2Robots(int cmdType)
 
         msg.cmdMessage = poseXYStr.toStdString();
 
+        for(int i = 0; i < coalMembers.size();i++)
+        {
+            msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
+        }
     }
     else if (cmdType == CMD_L2R_MOVE_TO_GOAL_POSE)
     {
         for(int i = 0; i < coalMembers.size();i++)
         {
-            msg.receiverRobotID[i] = coalMembers.at(i).robotID;
+            msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
         }
 
     }
@@ -410,7 +414,7 @@ void RosThread::sendCmd2Robots(int cmdType)
 
         for(int i = 0; i < splitRobotIDList.size();i++)
         {
-            msg.receiverRobotID[i] = splitRobotIDList.at(i);
+            msg.receiverRobotID.push_back(splitRobotIDList.at(i));
         }
     }
     else if (cmdType == CMD_L2R_LEADER_CHANGED)
@@ -491,7 +495,6 @@ void RosThread::sendCmd2Robots(int cmdType)
         // this will be done by messageDecoderISLH
 
          msg.cmdMessage = messageStr.toStdString();
-         int msgIndx = 0;
          for(int i = 0; i < coalMembers.size();i++)
          {
              int robID = coalMembers.at(i).robotID;
@@ -505,8 +508,7 @@ void RosThread::sendCmd2Robots(int cmdType)
              }
              if (robID>-1)
              {
-                msg.receiverRobotID[msgIndx] = robID;
-                msgIndx = msgIndx + 1;
+                msg.receiverRobotID.push_back(robID);
              }
          }
     }
@@ -626,6 +628,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         // the splitted leader ID is added to the end of splitRobotIDList
         if (infoType == INFO_L2C_SPLITTING_AND_LEADER_CHANGED)
         {
+            splittingMsg.append(",");
             splittingMsg.append(QString::number(newLeaderID));
         }
 
