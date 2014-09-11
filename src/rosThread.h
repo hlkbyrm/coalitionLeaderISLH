@@ -5,25 +5,35 @@
 #include <QObject>
 #include <QTime>
 #include <QtCore/QString>
-#include <coalitionLeaderISLH/taskInfo2CoordinatorMessage.h>
-#include <taskObserverISLH/newTaskInfoMessage.h>
-#include <messageDecoderISLH/cmdFromCoordinatorMessage.h>
+#include <ISLH_msgs/taskInfo2CoordinatorMessage.h>
+#include <ISLH_msgs/newTaskInfoMessage.h>
+#include <ISLH_msgs/cmdFromCoordinatorMessage.h>
 //#include <messageDecoderISLH/cmd2RobotsMessage.h>
-#include <coalitionLeaderISLH/cmd2RobotsFromLeaderMessage.h>
-#include <messageDecoderISLH/taskInfoFromRobotMessage.h>
-#include <messageDecoderISLH/newLeaderMessage.h>
+#include <ISLH_msgs/cmd2RobotsFromLeaderMessage.h>
+#include <ISLH_msgs/taskInfoFromRobotMessage.h>
+#include <ISLH_msgs/newLeaderMessage.h>
 
 enum CoalitionStatus
 {
+    CS_STOP = -1,
     CS_IDLE = 0,
     CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR = 1,
     CS_SUCCORING = 2,
     CS_HANDLING = 3,
-    CS_WAITING_GOAL_POSE = 4
+    CS_WAITING_GOAL_POSE = 4,
+    CS_WAITING_TASK_SITE_POSE = 5
+};
+
+enum Robot2LeaderInfoMgs
+{
+    INFO_R2L_NEW_TASK_INFO = 1,
+    INFO_R2L_REACHED_TO_TASK = 2,
+    INFO_R2L_REACHED_TO_GOAL = 3
 };
 
 enum Leader2RobotCmdMsgs
 {
+    CMD_L2R_START_OR_STOP_MISSION = 0,
     CMD_L2R_START_HANDLING = 1,
     CMD_L2R_MOVE_TO_TASK_SITE = 2,
     CMD_L2R_MOVE_TO_GOAL_POSE = 3,
@@ -38,14 +48,19 @@ enum Leader2CoordinatorInfoMgs
     INFO_L2C_START_HANDLING_WITH_TASK_INFO = 3,
     INFO_L2C_TASK_COMPLETED = 4,
     INFO_L2C_SPLITTING = 5,
-    INFO_L2C_SPLITTING_AND_LEADER_CHANGED = 6
+    INFO_L2C_SPLITTING_AND_LEADER_CHANGED = 6,
+    INFO_L2C_WAITING_GOAL_POSE = 7,
+    INFO_L2C_WAITING_TASK_SITE_POSE = 8
 };
 
 
 enum Coordinator2LeaderCmdMsgs
 {
+    CMD_C2L_START_OR_STOP_MISSION = 0,
     CMD_C2L_COALITION_MEMBERS = 1,
-    CMD_C2L_LEADER_CHANGE = 2
+    CMD_C2L_LEADER_CHANGE = 2,
+    CMD_C2L_NEW_GOAL_POSES = 3,
+    CMD_C2L_NEW_TASK_SITE_POSES = 4
 };
 
 struct coalValFuncParams{
@@ -64,9 +79,18 @@ struct robotProp{
     uint robotID;
     QVector <double> resources;
     poseXY pose;
+    poseXY goalPose;
+    poseXY taskSitePose;
     bool inTaskSite;
     bool inGoalPose;
 };
+
+/*
+struct robotTargetPosesProp{
+    uint robotID;
+    poseXY targetPose;
+};
+*/
 
 // task properties
 struct taskProp{
@@ -115,11 +139,15 @@ private:
 
      bool isCoalitionLeader;
 
+     bool startMission;
+
      int ownRobotID;
 
      int coordinatorRobotID;
 
      int newLeaderID;
+
+     double taskSiteRadius;
 
      //QVector <taskProp> newTasksList;
 
@@ -134,6 +162,11 @@ private:
      QVector <robotProp> coalMembers;
 
      QVector <int> splitRobotIDList;
+
+     // used to send the incoming goal or task site pose from the coordinator to the member robots
+     // after sending, it is cleared
+     //QVector <robotTargetPosesProp> robotTargetPoses;
+     QString robotTargetPosesStr;
 
      coalValFuncParams cvfParams; // the parameters w1, w2, w3, adn ro in the coalition value function
 
@@ -151,11 +184,11 @@ private:
 
      void sendTaskInfo2Coordinator(int infoType);
 
-     void handleTaskInfoMessage(messageDecoderISLH::taskInfoFromRobotMessage msg);
+     void handleTaskInfoMessage(ISLH_msgs::taskInfoFromRobotMessage msg);
 
-     void handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorMessage msg);
+     void handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage msg);
 
-     void handleNewLeaderMessage(messageDecoderISLH::newLeaderMessage msg);
+     void handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg);
 
      bool readConfigFile(QString filename);
 

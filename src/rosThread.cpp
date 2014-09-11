@@ -11,10 +11,12 @@ RosThread::RosThread()
 {
     shutdown = false;
 
-    currentState = CS_IDLE;
+    startMission = false;
 
-    // at the beginning of the mission, since each robot is singleton coaition,
-    // all the robots are coalition leader of itself.
+    currentState = CS_STOP;
+
+    // at the beginning of the mission, since each robot is singleton coalition,
+    // all the robots are acting as a coalition leader.
     isCoalitionLeader = true;
 
 }
@@ -50,11 +52,11 @@ void RosThread::work()
     }
 
 
-    messageTaskInfo2CoordinatorPub = n.advertise<coalitionLeaderISLH::taskInfo2CoordinatorMessage>("coalitionLeaderISLH/taskInfo2Coordinator",5);
+    messageTaskInfo2CoordinatorPub = n.advertise<ISLH_msgs::taskInfo2CoordinatorMessage>("coalitionLeaderISLH/taskInfo2Coordinator",5);
 
    // messageTaskInfo2CoordinatorDirect = n.advertise<messageDecoderISLH::taskInfo2CoordinatorMessage>("messageDecoder/taskInfoFromLeader",5);
 
-    messageCmd2RobotsPub = n.advertise<coalitionLeaderISLH::cmd2RobotsFromLeaderMessage>("coalitionLeaderISLH/cmd2Robots",5);
+    messageCmd2RobotsPub = n.advertise<ISLH_msgs::cmd2RobotsFromLeaderMessage>("coalitionLeaderISLH/cmd2Robots",5);
 
     messageNewLeaderSub = n.subscribe("messageDecoderISLH/newLeader",5,&RosThread::handleNewLeaderMessage, this);
 
@@ -92,8 +94,17 @@ void RosThread::shutdownROS()
 
 void RosThread::manageCoalition()
 {
+    if (currentState == CS_STOP)
+    {
+        if (startMission == true)
+        {
+            sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
+
+            currentState = CS_IDLE;
+        }
+    }
     // idle state
-    if (currentState == CS_IDLE)
+    else if (currentState == CS_IDLE)
     {
         if (waitingTasks.isEmpty()==false)
         {
@@ -101,7 +112,7 @@ void RosThread::manageCoalition()
             int sufficientResource = 1;
             for(int i = 0; i < coalTotalResources.size();i++)
             {
-                if (coalTotalResources.at(i) >= waitingTasks.at(0).requiredResources.at(i))
+                if (coalTotalResources.at(i) < waitingTasks.at(0).requiredResources.at(i))
                 {
                     sufficientResource = 0;
                     break;
@@ -110,11 +121,6 @@ void RosThread::manageCoalition()
 
             if (sufficientResource == 1)
             {
-
-                // ?????
-                // if all the robots in the coalition are in the task site
-                // ?????
-
                 //while checking resource excessiveness, the coalition leader may be splitted from
                 // the coalition. Since the new coalition leader will be responsible for
                 // coordinating the coalition, the waiting tasks' info will be sent to the new leader
@@ -124,22 +130,53 @@ void RosThread::manageCoalition()
 
                 if (isCoalitionLeader==true)
                 {
-                    // consider the oldest task
-                    handlingTask = waitingTasks.at(0);
+                    // check whether all the robot are in the task site
 
-                    // remove this task from waitingTasks
-                    waitingTasks.remove(0);
+                    int taskSiteOK = 0;
 
-                    // send start command to the coalition members
-                    sendCmd2Robots(CMD_L2R_START_HANDLING);
+                    double taskPoseX = waitingTasks.at(0).pose.X;
+                    double taskPoseY = waitingTasks.at(1).pose.Y;
 
-                    handlingTask.startHandlingTime = QDateTime::currentDateTime().toTime_t();
-                    handlingTask.status = 1;
+                    for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
+                    {
+                        double robPoseX = coalMembers.at(robotIndx).pose.X;
+                        double robPoseY = coalMembers.at(robotIndx).pose.Y;
 
-                    // inform the coordinator of the starting of the handling
-                    sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
+                        double dist = sqrt((robPoseX-taskPoseX)*(robPoseX-taskPoseX) + (robPoseY-taskPoseY)*(robPoseY-taskPoseY));
 
-                    currentState = CS_HANDLING;
+                        if (dist <= taskSiteRadius)
+                        {
+                            taskSiteOK = taskSiteOK + 1;
+                        }
+
+                    }
+
+
+                    if (taskSiteOK == coalMembers.size()) // all the robots in the coalition are in the task site
+                    {
+                        // consider the oldest task
+                        handlingTask = waitingTasks.at(0);
+
+                        // remove this task from waitingTasks
+                        waitingTasks.remove(0);
+
+                        // send start command to the coalition members
+                        sendCmd2Robots(CMD_L2R_START_HANDLING);
+
+                        handlingTask.startHandlingTime = QDateTime::currentDateTime().toTime_t();
+                        handlingTask.status = 1;
+
+                        // inform the coordinator of the starting of the handling
+                        sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
+
+                        currentState = CS_HANDLING;
+                    }
+                    else
+                    {
+                        sendTaskInfo2Coordinator(INFO_L2C_WAITING_TASK_SITE_POSE);
+
+                        currentState = CS_WAITING_TASK_SITE_POSE;
+                    }
                 }
             }
             else
@@ -149,6 +186,33 @@ void RosThread::manageCoalition()
                 currentState = CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR;
             }
         }
+        else
+        {
+            // check whether all the robots reach the goal pose
+            int goalPoseOK = 0;
+            for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
+            {
+                if (coalMembers.at(robotIndx).inGoalPose == true)
+                {
+                    goalPoseOK = goalPoseOK + 1;
+                }
+            }
+
+            // if all the coalition members are at their goal position
+            // wait for new goal positions from the coordinator
+            if (goalPoseOK == coalMembers.size())
+            {
+                for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
+                {
+                    coalMembers[robotIndx].inGoalPose = false;
+                }
+
+                sendTaskInfo2Coordinator(INFO_L2C_WAITING_GOAL_POSE);
+
+                currentState = CS_WAITING_GOAL_POSE;
+            }
+
+        }
     }
     // handling state
     else if (currentState == CS_HANDLING)
@@ -156,7 +220,6 @@ void RosThread::manageCoalition()
         uint currentTime = QDateTime::currentDateTime().toTime_t();
         if (currentTime - handlingTask.startHandlingTime >= handlingTask.handlingDuration)
         {
-
             sendTaskInfo2Coordinator(INFO_L2C_TASK_COMPLETED);
 
             completedTasks.push_back(handlingTask);
@@ -177,6 +240,40 @@ void RosThread::manageCoalition()
             currentState = CS_IDLE;
         }
     }
+    // succoring state
+    else if (currentState == CS_SUCCORING)
+    {
+        // check whether all the robots reach the task site
+        int taskSiteOK = 0;
+        for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
+        {
+            if (coalMembers.at(robotIndx).inTaskSite == true)
+            {
+                taskSiteOK = taskSiteOK + 1;
+            }
+        }
+
+        // if all the coalition members are in the task site
+        if (taskSiteOK == coalMembers.size())
+        {
+            // consider the oldest task
+            handlingTask = waitingTasks.at(0);
+
+            // remove this task from waitingTasks
+            waitingTasks.remove(0);
+
+            // send start command to the coalition members
+            sendCmd2Robots(CMD_L2R_START_HANDLING);
+
+            handlingTask.startHandlingTime = QDateTime::currentDateTime().toTime_t();
+            handlingTask.status = 1;
+
+            // inform the coordinator of the starting of the handling
+            sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
+
+            currentState = CS_HANDLING;
+        }
+    }
 
 }
 
@@ -191,9 +288,9 @@ void RosThread::check4ExcessiveResource()
 
         splitRobotIDList.clear();
 
-        QVector <robotProp> coalMembersTmp, coalMmbrsTmp;
+        QVector <robotProp> coalMembersTmp1, coalMembersTmp2;//coalMmbrsTmp;
 
-        coalMembersTmp = coalMembers;
+        coalMembersTmp1 = QVector <robotProp>(coalMembers);
 
         // current coalition value
         double coalVal = calcCoalValue(coalMembers);
@@ -208,15 +305,15 @@ void RosThread::check4ExcessiveResource()
 
             int splittedRobotIndx = -1;
 
-            for(int robotIndx=0;robotIndx<coalMembersTmp.size(); robotIndx++)
+            for(int robotIndx=0;robotIndx<coalMembersTmp1.size(); robotIndx++)
             {
-                coalMmbrsTmp = coalMembersTmp;
-                coalMmbrsTmp.remove(robotIndx);
-                double coalValTemp = calcCoalValue(coalMmbrsTmp);
+                coalMembersTmp2 = QVector <robotProp>(coalMembersTmp1);
+                coalMembersTmp2.remove(robotIndx);
+                double coalValTemp = calcCoalValue(coalMembersTmp2);
 
                 if (coalValTemp>=coalVal)
                 {
-                    if (coalMembersTmp.at(robotIndx).robotID == ownRobotID)
+                    if (coalMembersTmp1.at(robotIndx).robotID == ownRobotID)
                     {
                         leaderSplitted = 1;
                     }
@@ -226,6 +323,8 @@ void RosThread::check4ExcessiveResource()
                         splittedRobotIndx = robotIndx;
                         coalVal = coalValTemp;
                         changeAvail = 1;
+
+                        break;
                    // }
                 }
             }
@@ -235,13 +334,13 @@ void RosThread::check4ExcessiveResource()
                 // update the coalition resources due to the splitting
                 for(int resID=0; resID<coalTotalResources.size(); resID++)
                 {
-                    coalTotalResources[resID] = coalTotalResources.at(resID) - coalMembersTmp.at(splittedRobotIndx).resources.at(resID);
+                    coalTotalResources[resID] = coalTotalResources.at(resID) - coalMembersTmp1.at(splittedRobotIndx).resources.at(resID);
                 }
 
-                splitRobotIDList.append(coalMembersTmp.at(splittedRobotIndx).robotID);
+                splitRobotIDList.append(coalMembersTmp1.at(splittedRobotIndx).robotID);
 
                 // remove the splitted robot from the coalition
-                coalMembersTmp.remove(splittedRobotIndx);
+                coalMembersTmp1.remove(splittedRobotIndx);
 
             }
         }
@@ -258,13 +357,18 @@ void RosThread::check4ExcessiveResource()
                 int robID = coalMembers.at(i).robotID;
                 if ((robID != ownRobotID) && (robID < newLeaderID))
                 {
+                    bool flag = true;
                     for(int j = 0; j < splitRobotIDList.size();j++)
                     {
-                        if (robID != splitRobotIDList.at(j))
+                        if (robID == splitRobotIDList.at(j))
                         {
-                            newLeaderID = robID;
+                            flag = false;
+                            break;
                         }
                     }
+
+                    if (flag)
+                        newLeaderID = robID;
                 }
             }
 
@@ -298,8 +402,12 @@ void RosThread::check4ExcessiveResource()
 void  RosThread::calcCoalTotalResources(){
     coalTotalResources.clear();
 
+    int numOfResources = coalMembers.at(0).resources.size();
+
+    coalTotalResources.resize(numOfResources);
+
     for(int robID=0;robID<coalMembers.size();robID++){
-        for(int resID=0;resID<coalMembers.at(robID).resources.size();resID++){
+        for(int resID=0;resID<numOfResources;resID++){
             coalTotalResources[resID] += coalMembers.at(robID).resources.at(resID);
         }
     }
@@ -356,15 +464,31 @@ double RosThread::calcCoalValue(QVector <robotProp> coalMmbrs)
 // prepare a command message which the leader sends to the coalition member(s)
 void RosThread::sendCmd2Robots(int cmdType)
 {
-
-    coalitionLeaderISLH::cmd2RobotsFromLeaderMessage msg;
+    ISLH_msgs::cmd2RobotsFromLeaderMessage msg;
 
     std::time_t sendingTime = std::time(0);
     msg.sendingTime = sendingTime;
 
     msg.cmdTypeID = cmdType;
 
-    if (cmdType == CMD_L2R_START_HANDLING)
+    if (cmdType == CMD_L2R_START_OR_STOP_MISSION)
+    {
+        QString messageStr;
+        if (startMission == true)
+        {
+            messageStr = "START-MISSION";
+        }
+        else
+        {
+            messageStr = "STOP-MISSION";
+        }
+        msg.cmdMessage = messageStr.toStdString();
+        for(int i = 0; i < coalMembers.size();i++)
+        {
+            msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
+        }
+    }
+    else if (cmdType == CMD_L2R_START_HANDLING)
     {
         QString messageStr;
         messageStr.append(handlingTask.taskUUID);
@@ -379,30 +503,11 @@ void RosThread::sendCmd2Robots(int cmdType)
             msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
         }
     }
-    else if (cmdType == CMD_L2R_MOVE_TO_TASK_SITE)
+    else if ( (cmdType == CMD_L2R_MOVE_TO_TASK_SITE) || (cmdType == CMD_L2R_MOVE_TO_GOAL_POSE) )
     {
-        QString poseXYStr;
-        QString temp;
-
-        temp = QString::number(handlingTask.pose.X);
-        poseXYStr.append(temp);
-
-        poseXYStr.append(",");
-
-        temp = QString::number(handlingTask.pose.Y);
-        poseXYStr.append(temp);
-
-        msg.cmdMessage = poseXYStr.toStdString();
-
+        msg.cmdMessage = robotTargetPosesStr.toStdString();
         for(int i = 0; i < coalMembers.size();i++)
-        {
-            msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
-        }
-    }
-    else if (cmdType == CMD_L2R_MOVE_TO_GOAL_POSE)
-    {
-        for(int i = 0; i < coalMembers.size();i++)
-        {
+        {            
             msg.receiverRobotID.push_back(coalMembers.at(i).robotID);
         }
 
@@ -410,6 +515,7 @@ void RosThread::sendCmd2Robots(int cmdType)
     else if (cmdType == CMD_L2R_SPLIT_FROM_COALITION)
     {
         QString messageStr = "SPLIT";
+
         msg.cmdMessage = messageStr.toStdString();
 
         for(int i = 0; i < splitRobotIDList.size();i++)
@@ -419,7 +525,6 @@ void RosThread::sendCmd2Robots(int cmdType)
     }
     else if (cmdType == CMD_L2R_LEADER_CHANGED)
     {
-
 
          QString messageStr = "NewLeaderID";
          messageStr.append(QString::number(newLeaderID));
@@ -517,10 +622,27 @@ void RosThread::sendCmd2Robots(int cmdType)
 }
 
 
-void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorMessage msg)
+void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage msg)
 {
 
-    if (msg.messageTypeID = CMD_C2L_COALITION_MEMBERS)
+    if (msg.messageTypeID == CMD_C2L_START_OR_STOP_MISSION)
+    {
+        QString msgStr = QString::fromStdString(msg.message);
+
+        if (msgStr == "START-MISSION")
+        {
+            startMission = true;
+        }
+        else if (msgStr == "STOP-MISSION")
+        {
+            startMission = false;
+
+            sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
+
+            currentState = CS_STOP;
+        }
+    }
+    else if (msg.messageTypeID == CMD_C2L_COALITION_MEMBERS)
     {
         // now this robot is the coalition leader
         isCoalitionLeader = true;
@@ -528,9 +650,11 @@ void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorM
         // clear all the members
         coalMembers.clear();
 
+        QString targetType = "0"; // targetType="g" -> move to goal; targetType="t" -> move to task site
+
         QString msgStr = QString::fromStdString(msg.message);
 
-        // msgStr = robotID1;res1,res2,..,resn;posex,posey:robotID2;res1,res2,...,resn;posex,posey
+        // msgStr = robotID1;res1,res2,..,resn;posex,posey;goalOrTaskSite, targetx,targety:robotID2;res1,res2,...,resn;posex,posey;goalOrTaskSite,targetx,targety
 
         QStringList coalMemList = msgStr.split(":",QString::SkipEmptyParts);
         qDebug()<<"Number of coalition members"<<coalMemList.size();
@@ -553,14 +677,45 @@ void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorM
             robotTmp.pose.X = coalMemPoseStr.at(0).toDouble();
             robotTmp.pose.Y = coalMemPoseStr.at(1).toDouble();
 
+            QStringList coalMemTargetStr = coalMemPropStr.at(3).split(",",QString::SkipEmptyParts);
+
+            if (coalMemTargetStr.at(0)=="t")
+            {
+                robotTmp.taskSitePose.X = coalMemTargetStr.at(1).toDouble();
+                robotTmp.taskSitePose.Y = coalMemTargetStr.at(2).toDouble();
+
+                targetType = "t";
+            }
+            else if (coalMemTargetStr.at(0)=="g")
+            {
+                robotTmp.goalPose.X = coalMemTargetStr.at(1).toDouble();
+                robotTmp.goalPose.Y = coalMemTargetStr.at(2).toDouble();
+
+                targetType = "g";
+            }
+
             // add this robot to coalMembers
             coalMembers.append(robotTmp);
         }
 
         // calculate new coalition total resources
         calcCoalTotalResources();
+
+        if (targetType == "g")
+        {
+            sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
+
+            currentState = CS_IDLE;
+        }
+        else if (targetType == "t")
+        {
+            sendCmd2Robots(CMD_L2R_MOVE_TO_TASK_SITE);
+
+            currentState = CS_SUCCORING;
+        }
+
     }
-    else if (msg.messageTypeID = CMD_C2L_LEADER_CHANGE)
+    else if (msg.messageTypeID == CMD_C2L_LEADER_CHANGE)
     {
         QString msgStr = QString::fromStdString(msg.message);
 
@@ -568,17 +723,68 @@ void RosThread::handleCmdFromCoordinator(messageDecoderISLH::cmdFromCoordinatorM
             isCoalitionLeader = false;
         }
     }
+    else if ( (msg.messageTypeID == CMD_C2L_NEW_GOAL_POSES) || (msg.messageTypeID == CMD_C2L_NEW_TASK_SITE_POSES) )
+    {
+
+        QString msgStr = QString::fromStdString(msg.message);
+
+        // msgStr = robotID1,posex1,posey1;robotID2,posex2,posey2;...;robotIDn,posexn,poseyn
+
+        QStringList coalMmbrIDPoseList = msgStr.split(";",QString::SkipEmptyParts);
+
+        for(int i = 0; i < coalMmbrIDPoseList.size();i++)
+        {
+            QStringList coalMmbrIDPoseStr = coalMmbrIDPoseList.at(i).split(",",QString::SkipEmptyParts);
+
+            int rbtID =  coalMmbrIDPoseStr.at(0).toInt();
+
+            for(int coalMbrIndx = 0; coalMbrIndx < coalMembers.size();coalMbrIndx++)
+            {
+                if (coalMembers.at(coalMbrIndx).robotID == rbtID)
+                {
+                    if (msg.messageTypeID == CMD_C2L_NEW_GOAL_POSES)
+                    {
+                        coalMembers[coalMbrIndx].goalPose.X = coalMmbrIDPoseStr.at(1).toDouble();
+                        coalMembers[coalMbrIndx].goalPose.Y = coalMmbrIDPoseStr.at(2).toDouble();
+                    }
+                    else
+                    {
+                        coalMembers[coalMbrIndx].taskSitePose.X = coalMmbrIDPoseStr.at(1).toDouble();
+                        coalMembers[coalMbrIndx].taskSitePose.Y = coalMmbrIDPoseStr.at(2).toDouble();
+                    }
+                    break;
+                }
+            }
+        }
+
+        robotTargetPosesStr = QString(msgStr);
+
+        if (msg.messageTypeID == CMD_C2L_NEW_GOAL_POSES)
+        {
+            sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
+
+            currentState = CS_IDLE;
+        }
+        else
+        {
+            sendCmd2Robots(CMD_L2R_MOVE_TO_TASK_SITE);
+
+            currentState = CS_SUCCORING;
+        }
+
+    }
+
 }
 
 void RosThread::sendTaskInfo2Coordinator(int infoType)
 {
-    coalitionLeaderISLH::taskInfo2CoordinatorMessage msg;
+    ISLH_msgs::taskInfo2CoordinatorMessage msg;
 
     msg.infoTypeID = infoType;
     msg.senderRobotID = ownRobotID;
     msg.receiverRobotID = coordinatorRobotID;
 
-    if (infoType == INFO_L2C_INSUFFICIENT_RESOURCE)
+    if ( (infoType == INFO_L2C_INSUFFICIENT_RESOURCE) || (infoType == INFO_L2C_WAITING_TASK_SITE_POSE) )
     {
         msg.senderRobotID = ownRobotID;
         msg.taskUUID = waitingTasks.at(0).taskUUID.toStdString();
@@ -637,46 +843,76 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         // this message contains the robot IDs to be splitted from the coalition
         msg.extraMsg = splittingMsg.toStdString();
     }
+    else if (infoType == INFO_L2C_WAITING_GOAL_POSE)
+    {
+
+    }
+
 
     messageTaskInfo2CoordinatorPub.publish(msg);
 }
 
 // Incoming task info message from a member robot
-void RosThread::handleTaskInfoMessage(messageDecoderISLH::taskInfoFromRobotMessage msg)
+void RosThread::handleTaskInfoMessage(ISLH_msgs::taskInfoFromRobotMessage msg)
 {
-    taskProp newTask;
-
-    newTask.taskUUID = QString::fromStdString(msg.taskUUID);
-    newTask.handlingDuration = msg.handlingDuration;
-    newTask.timeOutDuration = msg.timeOutDuration;
-
-    QString newTaskRR =  QString::fromStdString(msg.requiredResources);
-    qDebug()<< " Task - required resources " << newTaskRR;
-    // Split the data (Comma seperated format)
-    QStringList newTaskRRList = newTaskRR.split(",",QString::SkipEmptyParts);
-    qDebug()<<"Number of resources parts"<<newTaskRRList.size();
-    qDebug()<<newTaskRRList;
-    for(int i = 0; i < newTaskRRList.size();i++)
+    if (msg.infoMessageType == INFO_R2L_NEW_TASK_INFO)
     {
-        newTask.requiredResources.append(newTaskRRList.at(i).toDouble());
+        taskProp newTask;
+
+        newTask.taskUUID = QString::fromStdString(msg.taskUUID);
+        newTask.handlingDuration = msg.handlingDuration;
+        newTask.timeOutDuration = msg.timeOutDuration;
+
+        QString newTaskRR =  QString::fromStdString(msg.requiredResources);
+        qDebug()<< " Task - required resources " << newTaskRR;
+        // Split the data (Comma seperated format)
+        QStringList newTaskRRList = newTaskRR.split(",",QString::SkipEmptyParts);
+        qDebug()<<"Number of resources parts"<<newTaskRRList.size();
+        qDebug()<<newTaskRRList;
+        for(int i = 0; i < newTaskRRList.size();i++)
+        {
+            newTask.requiredResources.append(newTaskRRList.at(i).toDouble());
+        }
+
+        newTask.requiredResourcesString = QString::fromStdString(msg.requiredResources);
+
+        newTask.pose.X = msg.posX;
+        newTask.pose.Y = msg.posY;
+
+        newTask.startHandlingTime = -1;
+
+        newTask.status = 0;
+
+        newTask.encounteringTime = msg.encounteringTime;
+
+        waitingTasks.append(newTask);
     }
-
-    newTask.requiredResourcesString = QString::fromStdString(msg.requiredResources);
-
-    newTask.pose.X = msg.posX;
-    newTask.pose.Y = msg.posY;
-
-    newTask.startHandlingTime = -1;
-
-    newTask.status = 0;
-
-    newTask.encounteringTime = msg.encounteringTime;
-
-    waitingTasks.append(newTask);
+    else if (msg.infoMessageType == INFO_R2L_REACHED_TO_TASK)
+    {
+        for(int i = 0; i < coalMembers.size();i++)
+        {
+            if (coalMembers.at(i).robotID == msg.senderRobotID)
+            {
+                coalMembers[i].inTaskSite = true;
+                break;
+            }
+        }
+    }
+    else if (msg.infoMessageType == INFO_R2L_REACHED_TO_GOAL)
+    {
+        for(int i = 0; i < coalMembers.size();i++)
+        {
+            if (coalMembers.at(i).robotID == msg.senderRobotID)
+            {
+                coalMembers[i].inGoalPose = true;
+                break;
+            }
+        }
+    }
 
 }
 
-void RosThread::handleNewLeaderMessage(messageDecoderISLH::newLeaderMessage msg)
+void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
 {
     if (msg.infoTypeID == 1)
     {
@@ -695,7 +931,7 @@ void RosThread::handleNewLeaderMessage(messageDecoderISLH::newLeaderMessage msg)
 
             QStringList resourceMessageParts = robotMessageParts.at(1).split(",",QString::SkipEmptyParts);
             for(int i=0;i<resourceMessageParts.size();i++)
-                robot.resources[i] = resourceMessageParts.at(i).toDouble();
+                robot.resources.append(resourceMessageParts.at(i).toDouble());
 
             QStringList positionMessageParts = robotMessageParts.at(2).split(",",QString::SkipEmptyParts);
             robot.pose.X = positionMessageParts.at(0).toInt();
@@ -761,10 +997,13 @@ bool RosThread::readConfigFile(QString filename)
         qDebug()<< " w2 " << cvfParams.w2;
 
         cvfParams.w3 = result["cvf-w3"].toDouble();
-        qDebug()<< " w3 " << cvfParams.w3;
+        qDebug()<< " w3 " << cvfParams.w3;      
 
         cvfParams.ro = result["ro"].toDouble();
         qDebug()<< " ro " << cvfParams.ro;
+
+        taskSiteRadius = result["taskSiteRadius"].toDouble();
+        qDebug()<< " taskSiteRadius " << taskSiteRadius;
     }
     file.close();
     return true;
