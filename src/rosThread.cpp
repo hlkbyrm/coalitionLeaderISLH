@@ -18,7 +18,6 @@ RosThread::RosThread()
     // at the beginning of the mission, since each robot is singleton coalition,
     // all the robots are acting as a coalition leader.
     isCoalitionLeader = true;
-
 }
 
 
@@ -850,7 +849,8 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
     }
     else if (infoType == INFO_L2C_WAITING_GOAL_POSE)
     {
-
+        QString messageStr = "GOALPOSE";
+        msg.extraMsg = messageStr.toStdString();
     }
 
 
