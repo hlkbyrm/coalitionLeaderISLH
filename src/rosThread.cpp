@@ -220,6 +220,11 @@ void RosThread::manageCoalition()
         uint currentTime = QDateTime::currentDateTime().toTime_t();
         if (currentTime - handlingTask.startHandlingTime >= handlingTask.handlingDuration)
         {
+            for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
+            {
+                coalMembers[robotIndx].inTaskSite = false;
+            }
+
             sendTaskInfo2Coordinator(INFO_L2C_TASK_COMPLETED);
 
             completedTasks.push_back(handlingTask);
