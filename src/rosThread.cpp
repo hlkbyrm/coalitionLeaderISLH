@@ -445,7 +445,10 @@ double RosThread::calcCoalValue(QVector <robotProp> coalMmbrs)
             resDiff = resDiff  + (taskRes-coalRes)*(taskRes-coalRes);
         }
 
-        excess = excess + (1-coalRes/taskRes)*(1-coalRes/taskRes);
+        if (taskRes>0)
+        {
+            excess = excess + (1-coalRes/taskRes)*(1-coalRes/taskRes);
+        }
     }
 
 
