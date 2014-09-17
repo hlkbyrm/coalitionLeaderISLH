@@ -624,6 +624,16 @@ void RosThread::sendCmd2Robots(int cmdType)
              }
          }
     }
+    else if (cmdType == CMD_L2R_NEW_ALL_TARGET_POSES)
+    {
+        msg.cmdMessage = targetPosesALLStr.toStdString();
+        for(int i = 0; i < coalMembers.size();i++)
+        {
+            int robID = coalMembers.at(i).robotID;
+
+            msg.receiverRobotID.push_back(robID);
+        }
+    }
 
     messageCmd2RobotsPub.publish(msg);
 }
@@ -778,7 +788,12 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
 
             currentState = CS_SUCCORING;
         }
+    }
+    else if (msg.messageTypeID == CMD_C2L_NEW_ALL_TARGET_POSES)
+    {
+        targetPosesALLStr = QString::fromStdString(msg.message);
 
+        sendCmd2Robots(CMD_L2R_NEW_ALL_TARGET_POSES);
     }
 
 }

@@ -38,7 +38,8 @@ enum Leader2RobotCmdMsgs
     CMD_L2R_MOVE_TO_TASK_SITE = 2,
     CMD_L2R_MOVE_TO_GOAL_POSE = 3,
     CMD_L2R_SPLIT_FROM_COALITION = 4,
-    CMD_L2R_LEADER_CHANGED = 5
+    CMD_L2R_LEADER_CHANGED = 5,
+    CMD_L2R_NEW_ALL_TARGET_POSES = 6
 };
 
 enum Leader2CoordinatorInfoMgs
@@ -60,7 +61,8 @@ enum Coordinator2LeaderCmdMsgs
     CMD_C2L_COALITION_MEMBERS = 1,
     CMD_C2L_LEADER_CHANGE = 2,
     CMD_C2L_NEW_GOAL_POSES = 3,
-    CMD_C2L_NEW_TASK_SITE_POSES = 4
+    CMD_C2L_NEW_TASK_SITE_POSES = 4,
+    CMD_C2L_NEW_ALL_TARGET_POSES = 5
 };
 
 struct coalValFuncParams{
@@ -149,6 +151,8 @@ private:
      int newLeaderID;
 
      double taskSiteRadius;
+
+     QString targetPosesALLStr;
 
      //QVector <taskProp> newTasksList;
 
