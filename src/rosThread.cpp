@@ -1012,6 +1012,49 @@ bool RosThread::readConfigFile(QString filename)
 
         taskSiteRadius = result["taskSiteRadius"].toDouble();
         qDebug()<< " taskSiteRadius " << taskSiteRadius;
+
+
+        ownRobotID = result["robotID"].toInt();
+        qDebug()<< " ownRobotID " << ownRobotID;
+
+        double radiusTmp = result["robotRadius"].toDouble();
+
+
+        // initialize the singleton coalition
+
+        QString resourceStr = result["resources"].toString();
+        QStringList resourceStrList = resourceStr.split(",",QString::SkipEmptyParts);
+        QVector <double> resources;
+        for(int i = 0; i < resourceStrList.size();i++)
+        {
+           resources.append(resourceStrList.at(i).toDouble());
+        }
+
+        robotProp robotTmp;
+
+        robotTmp.robotID = ownRobotID;
+        robotTmp.inGoalPose = -1;
+        robotTmp.inTaskSite = -1;
+
+        robotTmp.pose.X = -1;
+        robotTmp.pose.Y = -1;
+
+        robotTmp.goalPose.X = -1;
+        robotTmp.goalPose.Y = -1;
+
+        robotTmp.taskSitePose.X = -1;
+        robotTmp.taskSitePose.Y = -1;
+
+        robotTmp.radius = radiusTmp;
+
+        robotTmp.resources = resources;
+
+
+        coalMembers.append(robotTmp);
+
+        calcCoalTotalResources();
+
+
     }
     file.close();
     return true;

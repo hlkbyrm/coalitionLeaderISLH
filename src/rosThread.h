@@ -78,11 +78,12 @@ struct poseXY{
 struct robotProp{
     uint robotID;
     QVector <double> resources;
-    poseXY pose;
+    double radius;
+    poseXY pose;    
     poseXY goalPose;
     poseXY taskSitePose;
-    bool inTaskSite;
-    bool inGoalPose;
+    int inTaskSite;
+    int inGoalPose;
 };
 
 /*
