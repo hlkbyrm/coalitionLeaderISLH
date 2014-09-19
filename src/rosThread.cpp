@@ -1032,6 +1032,9 @@ bool RosThread::readConfigFile(QString filename)
         ownRobotID = result["robotID"].toInt();
         qDebug()<< " ownRobotID " << ownRobotID;
 
+        coordinatorRobotID = result["taskCoordinatorRobotID"].toInt();
+        qDebug()<< " coordinatorRobotID " << coordinatorRobotID;
+
         double radiusTmp = result["robotRadius"].toDouble();
 
 
@@ -1048,7 +1051,7 @@ bool RosThread::readConfigFile(QString filename)
         robotProp robotTmp;
 
         robotTmp.robotID = ownRobotID;
-        robotTmp.inGoalPose = -1;
+        robotTmp.inGoalPose = 1;
         robotTmp.inTaskSite = -1;
 
         robotTmp.pose.X = -1;
