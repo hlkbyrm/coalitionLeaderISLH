@@ -221,6 +221,7 @@ void RosThread::manageCoalition()
         {
             for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
             {
+                coalMembers[robotIndx].inGoalPose = true;
                 coalMembers[robotIndx].inTaskSite = false;
             }
 
@@ -236,7 +237,12 @@ void RosThread::manageCoalition()
     {
         uint currentTime = QDateTime::currentDateTime().toTime_t();
         if (currentTime - waitingTasks.at(0).encounteringTime >= waitingTasks.at(0).timeOutDuration)
-        {
+        {            
+            for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
+            {
+                coalMembers[robotIndx].inGoalPose = true;
+                coalMembers[robotIndx].inTaskSite = false;
+            }
             timedoutTasks.push_back(waitingTasks.at(0));
 
             waitingTasks.remove(0);
