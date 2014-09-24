@@ -584,7 +584,6 @@ void RosThread::sendCmd2Robots(int cmdType)
              }
          }
 
-
          //send also the new leader the waiting tasks' info
          for(int wti = 0; wti < waitingTasks.size();wti++)
          {
@@ -630,6 +629,21 @@ void RosThread::sendCmd2Robots(int cmdType)
              }
          }
     }
+    else if (cmdType == CMD_L2R_I_AM_LEADER)
+    {
+        QString messageStr = "NewLeaderID";
+        messageStr.append(QString::number(newLeaderID));
+
+        msg.cmdMessage = messageStr.toStdString();
+
+        for(int i = 0; i < coalMembers.size();i++)
+        {
+            int robID = coalMembers.at(i).robotID;
+
+            msg.receiverRobotID.push_back(robID);
+        }
+
+    }
     else if (cmdType == CMD_L2R_NEW_ALL_TARGET_POSES)
     {
         msg.cmdMessage = targetPosesALLStr.toStdString();
@@ -673,18 +687,24 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
         // clear all the members
         coalMembers.clear();
 
+        // robotTargetPosesStr = robotID1,posex1,posey1;robotID2,posex2,posey2;...;robotIDn,posexn,poseyn
+        robotTargetPosesStr.clear();
+
         QString targetType = "0"; // targetType="g" -> move to goal; targetType="t" -> move to task site
 
         QString msgStr = QString::fromStdString(msg.message);
 
-        // msgStr = robotID1;res1,res2,..,resn;posex,posey;goalOrTaskSite, targetx,targety:robotID2;res1,res2,...,resn;posex,posey;goalOrTaskSite,targetx,targety
+        // msgStr = numberOfMembers:robotID1;res1,res2,..,resn;posex,posey;goalOrTaskSite, targetx,targety:robotID2;res1,res2,...,resn;posex,posey;goalOrTaskSite,targetx,targety:task
 
-        QStringList coalMemList = msgStr.split(":",QString::SkipEmptyParts);
-        qDebug()<<"Number of coalition members"<<coalMemList.size();
+        QStringList msgParts = msgStr.split(":",QString::SkipEmptyParts);
 
-        for(int i = 0; i < coalMemList.size();i++)
+        int numOfMembers = msgParts.at(0).toInt();
+        qDebug()<<"Number of coalition members"<<numOfMembers;
+
+        // coalition members
+        for(int i = 1; i <= numOfMembers;i++)
         {
-            QStringList coalMemPropStr = coalMemList.at(i).split(";",QString::SkipEmptyParts);
+            QStringList coalMemPropStr = msgParts.at(i).split(";",QString::SkipEmptyParts);
 
             robotProp robotTmp;
 
@@ -717,12 +737,55 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
                 targetType = "g";
             }
 
+            robotTargetPosesStr.append(robotTmp.robotID);
+            robotTargetPosesStr.append(",");
+            robotTargetPosesStr.append(coalMemTargetStr.at(1));
+            robotTargetPosesStr.append(",");
+            robotTargetPosesStr.append(coalMemTargetStr.at(2));
+            if (i<numOfMembers)
+                robotTargetPosesStr.append(";");
+
+
             // add this robot to coalMembers
             coalMembers.append(robotTmp);
         }
 
         // calculate new coalition total resources
         calcCoalTotalResources();
+
+        // inform the members that I am the leader
+        sendCmd2Robots(CMD_L2R_I_AM_LEADER);
+
+
+        if (waitingTasks.size()>0)
+            qDebug()<<"handleCmdFromCoordinator->CMD_C2L_COALITION_MEMBERS waitingTasks is not empty. taskUUID is "<<waitingTasks.at(0).taskUUID;
+
+        waitingTasks.clear();
+
+        if (msgStr.size() > numOfMembers)
+        {
+            // proporties of the task to be handled
+
+            QStringList taskMessageParts = msgParts.at(msgStr.size()-1).split(";",QString::SkipEmptyParts);
+            taskProp taskTmp;
+
+            taskTmp.taskUUID = taskMessageParts.at(0);
+            taskTmp.pose.X = taskMessageParts.at(1).toInt();
+            taskTmp.pose.Y = taskMessageParts.at(2).toInt();
+            taskTmp.encounteringRobotID = taskMessageParts.at(3).toUInt();
+            taskTmp.handlingDuration = taskMessageParts.at(4).toUInt();
+            taskTmp.timeOutDuration = taskMessageParts.at(5).toUInt();
+            taskTmp.requiredResourcesString = taskMessageParts.at(6);
+
+            QStringList newTaskRRList = taskTmp.requiredResourcesString.split(",",QString::SkipEmptyParts);
+            for(int i = 0; i < newTaskRRList.size();i++)
+                taskTmp.requiredResources.append(newTaskRRList.at(i).toDouble());
+
+            taskTmp.encounteringTime = taskMessageParts.at(7).toUInt();
+
+            waitingTasks.append(taskTmp);
+        }
+
 
         if (targetType == "g")
         {

@@ -39,7 +39,8 @@ enum Leader2RobotCmdMsgs
     CMD_L2R_MOVE_TO_GOAL_POSE = 3,
     CMD_L2R_SPLIT_FROM_COALITION = 4,
     CMD_L2R_LEADER_CHANGED = 5,
-    CMD_L2R_NEW_ALL_TARGET_POSES = 6
+    CMD_L2R_NEW_ALL_TARGET_POSES = 6,
+    CMD_L2R_I_AM_LEADER = 7
 };
 
 enum Leader2CoordinatorInfoMgs
