@@ -279,7 +279,7 @@ void RosThread::manageCoalition()
             handlingTask.status = 1;
 
             // inform the coordinator of the starting of the handling
-            sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
+            sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING);
 
             currentState = CS_HANDLING;
         }
@@ -900,7 +900,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
     {
         msg.senderRobotID = ownRobotID;
 
-        msg.startHandlingTime = waitingTasks.at(0).startHandlingTime;
+        msg.startHandlingTime = handlingTask.startHandlingTime;
 
         msg.taskUUID = handlingTask.taskUUID.toStdString();
     }
