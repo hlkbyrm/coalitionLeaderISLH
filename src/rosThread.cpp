@@ -143,7 +143,7 @@ void RosThread::manageCoalition()
 
                         double dist = sqrt((robPoseX-taskPoseX)*(robPoseX-taskPoseX) + (robPoseY-taskPoseY)*(robPoseY-taskPoseY));
 
-                        if (dist <= taskSiteRadius)
+                        if (dist <= targetSiteRadius*coalMembers.size())
                         {
                             taskSiteOK = taskSiteOK + 1;
                         }
@@ -1094,8 +1094,8 @@ bool RosThread::readConfigFile(QString filename)
         cvfParams.ro = result["ro"].toDouble();
         qDebug()<< " ro " << cvfParams.ro;
 
-        taskSiteRadius = result["taskSiteRadius"].toDouble();
-        qDebug()<< " taskSiteRadius " << taskSiteRadius;
+        targetSiteRadius = result["targetSiteRadius"].toDouble();
+        qDebug()<< " targetSiteRadius " << targetSiteRadius;
 
 
         ownRobotID = result["robotID"].toInt();

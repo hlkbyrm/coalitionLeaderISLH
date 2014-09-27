@@ -8,7 +8,6 @@
 #include <ISLH_msgs/taskInfo2CoordinatorMessage.h>
 #include <ISLH_msgs/newTaskInfoMessage.h>
 #include <ISLH_msgs/cmdFromCoordinatorMessage.h>
-//#include <messageDecoderISLH/cmd2RobotsMessage.h>
 #include <ISLH_msgs/cmd2RobotsFromLeaderMessage.h>
 #include <ISLH_msgs/taskInfoFromRobotMessage.h>
 #include <ISLH_msgs/newLeaderMessage.h>
@@ -89,12 +88,6 @@ struct robotProp{
     int inGoalPose;
 };
 
-/*
-struct robotTargetPosesProp{
-    uint robotID;
-    poseXY targetPose;
-};
-*/
 
 // task properties
 struct taskProp{
@@ -151,7 +144,7 @@ private:
 
      int newLeaderID;
 
-     double taskSiteRadius;
+     double targetSiteRadius;
 
      QString targetPosesALLStr;
 
