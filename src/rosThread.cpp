@@ -51,18 +51,19 @@ void RosThread::work()
     }
 
 
-    messageTaskInfo2CoordinatorPub = n.advertise<ISLH_msgs::taskInfo2CoordinatorMessage>("coalitionLeaderISLH/taskInfo2Coordinator",5);
+    messageTaskInfo2CoordinatorPub = n.advertise<ISLH_msgs::taskInfo2CoordinatorMessage>("coalitionLeaderISLH/taskInfo2Coordinator",queueSize);
 
    // messageTaskInfo2CoordinatorDirect = n.advertise<messageDecoderISLH::taskInfo2CoordinatorMessage>("messageDecoder/taskInfoFromLeader",5);
 
-    messageCmd2RobotsPub = n.advertise<ISLH_msgs::cmd2RobotsFromLeaderMessage>("coalitionLeaderISLH/cmd2Robots",5);
+    messageCmd2RobotsPub = n.advertise<ISLH_msgs::cmd2RobotsFromLeaderMessage>("coalitionLeaderISLH/cmd2Robots",queueSize);
 
-    messageNewLeaderSub = n.subscribe("messageDecoderISLH/newLeader",5,&RosThread::handleNewLeaderMessage, this);
+    messageNewLeaderSub = n.subscribe("messageDecoderISLH/newLeader",queueSize,&RosThread::handleNewLeaderMessage, this);
 
-    messageCmdFromCoordinatorSub = n.subscribe("messageDecoderISLH/cmdFromCoordinator",5,&RosThread::handleCmdFromCoordinator,this);
+    messageCmdFromCoordinatorSub = n.subscribe("messageDecoderISLH/cmdFromCoordinator",queueSize,&RosThread::handleCmdFromCoordinator,this);
 
-    messageTaskInfoFromRobotSub = n.subscribe("messageDecoderISLH/taskInfoFromRobot",5,&RosThread::handleTaskInfoMessage,this);
+    messageTaskInfoFromRobotSub = n.subscribe("messageDecoderISLH/taskInfoFromRobot",queueSize,&RosThread::handleTaskInfoMessage,this);
 
+    coalInfo2MonitorPub = n.advertise<std_msgs::UInt8>("coalitionLeaderISLH/coalStateInfo2Monitor",queueSize);
 
     while(ros::ok())
     {
@@ -100,6 +101,10 @@ void RosThread::manageCoalition()
             sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
 
             currentState = CS_IDLE;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
     }
     // idle state
@@ -169,12 +174,21 @@ void RosThread::manageCoalition()
                         sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
 
                         currentState = CS_HANDLING;
+
+
+                        std_msgs::UInt8 coalInfoMsg;
+                        coalInfoMsg.data = currentState;
+                        coalInfo2MonitorPub.publish(coalInfoMsg);
                     }
                     else
                     {
                         sendTaskInfo2Coordinator(INFO_L2C_WAITING_TASK_SITE_POSE);
 
                         currentState = CS_WAITING_TASK_SITE_POSE;
+
+                        std_msgs::UInt8 coalInfoMsg;
+                        coalInfoMsg.data = currentState;
+                        coalInfo2MonitorPub.publish(coalInfoMsg);
                     }
                 }
             }
@@ -183,6 +197,10 @@ void RosThread::manageCoalition()
                 sendTaskInfo2Coordinator(INFO_L2C_INSUFFICIENT_RESOURCE);
 
                 currentState = CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR;
+
+                std_msgs::UInt8 coalInfoMsg;
+                coalInfoMsg.data = currentState;
+                coalInfo2MonitorPub.publish(coalInfoMsg);
             }
         }
         else
@@ -209,6 +227,10 @@ void RosThread::manageCoalition()
                 sendTaskInfo2Coordinator(INFO_L2C_WAITING_GOAL_POSE);
 
                 currentState = CS_WAITING_GOAL_POSE;
+
+                std_msgs::UInt8 coalInfoMsg;
+                coalInfoMsg.data = currentState;
+                coalInfo2MonitorPub.publish(coalInfoMsg);
             }
 
         }
@@ -230,6 +252,10 @@ void RosThread::manageCoalition()
             completedTasks.push_back(handlingTask);
 
             currentState = CS_IDLE;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
     }
     // waiting for a response from the coordinator
@@ -248,6 +274,10 @@ void RosThread::manageCoalition()
             waitingTasks.remove(0);
 
             currentState = CS_IDLE;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
     }
     // succoring state
@@ -282,6 +312,10 @@ void RosThread::manageCoalition()
             sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING);
 
             currentState = CS_HANDLING;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
     }
 
@@ -677,6 +711,10 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
             sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
 
             currentState = CS_STOP;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
     }
     else if (msg.messageTypeID == CMD_C2L_COALITION_MEMBERS)
@@ -792,12 +830,20 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
             sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
 
             currentState = CS_IDLE;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
         else if (targetType == "t")
         {
             sendCmd2Robots(CMD_L2R_MOVE_TO_TASK_SITE);
 
             currentState = CS_SUCCORING;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
 
     }
@@ -850,12 +896,20 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
             sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
 
             currentState = CS_IDLE;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
         else
         {
             sendCmd2Robots(CMD_L2R_MOVE_TO_TASK_SITE);
 
             currentState = CS_SUCCORING;
+
+            std_msgs::UInt8 coalInfoMsg;
+            coalInfoMsg.data = currentState;
+            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
     }
     else if (msg.messageTypeID == CMD_C2L_NEW_ALL_TARGET_POSES)
@@ -1103,6 +1157,9 @@ bool RosThread::readConfigFile(QString filename)
 
         coordinatorRobotID = result["taskCoordinatorRobotID"].toInt();
         qDebug()<< " coordinatorRobotID " << coordinatorRobotID;
+
+        queueSize = result["queueSize"].toInt();
+        qDebug()<<result["queueSize"].toString();
 
         double radiusTmp = result["robotRadius"].toDouble();
 

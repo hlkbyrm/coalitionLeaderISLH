@@ -11,6 +11,7 @@
 #include <ISLH_msgs/cmd2RobotsFromLeaderMessage.h>
 #include <ISLH_msgs/taskInfoFromRobotMessage.h>
 #include <ISLH_msgs/newLeaderMessage.h>
+#include <std_msgs/UInt8.h>
 
 enum CoalitionStatus
 {
@@ -134,6 +135,8 @@ private:
 
      ros::Subscriber messageTaskInfoFromRobotSub;
 
+     ros::Publisher coalInfo2MonitorPub;
+
      bool isCoalitionLeader;
 
      bool startMission;
@@ -143,6 +146,8 @@ private:
      int coordinatorRobotID;
 
      int newLeaderID;
+
+     int queueSize;
 
      double targetSiteRadius;
 
