@@ -931,6 +931,9 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
 {
     ISLH_msgs::taskInfo2CoordinatorMessage msg;
 
+    std::time_t sendingTime = std::time(0);
+    msg.sendingTime = sendingTime;
+
     msg.infoTypeID = infoType;
     msg.senderRobotID = ownRobotID;
     msg.receiverRobotID = coordinatorRobotID;
