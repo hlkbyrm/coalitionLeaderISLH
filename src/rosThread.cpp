@@ -139,7 +139,7 @@ void RosThread::manageCoalition()
                     int taskSiteOK = 0;
 
                     double taskPoseX = waitingTasks.at(0).pose.X;
-                    double taskPoseY = waitingTasks.at(1).pose.Y;
+                    double taskPoseY = waitingTasks.at(0).pose.Y;
 
                     for(int robotIndx=0;robotIndx<coalMembers.size(); robotIndx++)
                     {
@@ -947,6 +947,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         msg.encounteringTime = waitingTasks.at(0).encounteringTime;
         msg.taskResource = waitingTasks.at(0).requiredResourcesString.toStdString();
         msg.encounteringRobotID = waitingTasks.at(0).encounteringRobotID;
+        msg.timeOutDuration = waitingTasks.at(0).timeOutDuration;
     }
     else if (infoType == INFO_L2C_START_HANDLING_WITH_TASK_INFO)
     {
@@ -958,6 +959,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         msg.startHandlingTime = waitingTasks.at(0).startHandlingTime;
         msg.taskResource = waitingTasks.at(0).requiredResourcesString.toStdString();
         msg.encounteringRobotID = waitingTasks.at(0).encounteringRobotID;
+        msg.timeOutDuration = waitingTasks.at(0).timeOutDuration;
     }
     else if (infoType == INFO_L2C_START_HANDLING)
     {
