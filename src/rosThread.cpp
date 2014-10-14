@@ -948,6 +948,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         msg.taskResource = waitingTasks.at(0).requiredResourcesString.toStdString();
         msg.encounteringRobotID = waitingTasks.at(0).encounteringRobotID;
         msg.timeOutDuration = waitingTasks.at(0).timeOutDuration;
+        msg.handlingDuration = waitingTasks.at(0).handlingDuration;
     }
     else if (infoType == INFO_L2C_START_HANDLING_WITH_TASK_INFO)
     {
@@ -960,6 +961,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
         msg.taskResource = waitingTasks.at(0).requiredResourcesString.toStdString();
         msg.encounteringRobotID = waitingTasks.at(0).encounteringRobotID;
         msg.timeOutDuration = waitingTasks.at(0).timeOutDuration;
+        msg.handlingDuration = waitingTasks.at(0).handlingDuration;
     }
     else if (infoType == INFO_L2C_START_HANDLING)
     {
