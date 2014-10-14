@@ -973,7 +973,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
 
         msg.taskUUID = handlingTask.taskUUID.toStdString();
     }
-    else if ( (infoType == INFO_L2C_SPLITTING) || (INFO_L2C_SPLITTING_AND_LEADER_CHANGED) )
+    else if ( (infoType == INFO_L2C_SPLITTING) || (infoType == INFO_L2C_SPLITTING_AND_LEADER_CHANGED) )
     {
         QString splittingMsg;
 
