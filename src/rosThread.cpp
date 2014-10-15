@@ -1021,6 +1021,7 @@ void RosThread::handleTaskInfoMessage(ISLH_msgs::taskInfoFromRobotMessage msg)
         newTask.taskUUID = QString::fromStdString(msg.taskUUID);
         newTask.handlingDuration = msg.handlingDuration;
         newTask.timeOutDuration = msg.timeOutDuration;
+        newTask.encounteringRobotID = msg.senderRobotID;
 
         QString newTaskRR =  QString::fromStdString(msg.requiredResources);
         qDebug()<< " Task - required resources " << newTaskRR;
