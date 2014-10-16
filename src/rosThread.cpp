@@ -15,6 +15,8 @@ RosThread::RosThread()
 
     currentState = CS_STOP;
 
+    qDebug()<<"currentCoalitionState: CS_STOP";
+
     // at the beginning of the mission, since each robot is singleton coalition,
     // all the robots are acting as a coalition leader.
     isCoalitionLeader = true;
@@ -102,6 +104,8 @@ void RosThread::manageCoalition()
 
             currentState = CS_IDLE;
 
+            qDebug()<<"currentCoalitionState: CS_IDLE <- CS_STOP";
+
             std_msgs::UInt8 coalInfoMsg;
             coalInfoMsg.data = currentState;
             coalInfo2MonitorPub.publish(coalInfoMsg);
@@ -175,6 +179,8 @@ void RosThread::manageCoalition()
 
                         currentState = CS_HANDLING;
 
+                        qDebug()<<"currentCoalitionState: CS_HANDLING <- CS_IDLE";
+
 
                         std_msgs::UInt8 coalInfoMsg;
                         coalInfoMsg.data = currentState;
@@ -185,6 +191,8 @@ void RosThread::manageCoalition()
                         sendTaskInfo2Coordinator(INFO_L2C_WAITING_TASK_SITE_POSE);
 
                         currentState = CS_WAITING_TASK_SITE_POSE;
+
+                        qDebug()<<"currentCoalitionState: CS_WAITING_TASK_SITE_POSE  <- CS_IDLE";
 
                         std_msgs::UInt8 coalInfoMsg;
                         coalInfoMsg.data = currentState;
@@ -197,6 +205,8 @@ void RosThread::manageCoalition()
                 sendTaskInfo2Coordinator(INFO_L2C_INSUFFICIENT_RESOURCE);
 
                 currentState = CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR;
+
+                qDebug()<<"currentCoalitionState: CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR <- CS_IDLE";
 
                 std_msgs::UInt8 coalInfoMsg;
                 coalInfoMsg.data = currentState;
@@ -226,7 +236,9 @@ void RosThread::manageCoalition()
 
                 sendTaskInfo2Coordinator(INFO_L2C_WAITING_GOAL_POSE);
 
-                currentState = CS_WAITING_GOAL_POSE;
+                qDebug()<<"currentCoalitionState: CS_WAITING_GOAL_POSE <- "<<currentState;
+
+                currentState = CS_WAITING_GOAL_POSE;                
 
                 std_msgs::UInt8 coalInfoMsg;
                 coalInfoMsg.data = currentState;
@@ -253,6 +265,8 @@ void RosThread::manageCoalition()
 
             currentState = CS_IDLE;
 
+            qDebug()<<"currentCoalitionState: CS_IDLE <- CS_HANDLING";
+
             std_msgs::UInt8 coalInfoMsg;
             coalInfoMsg.data = currentState;
             coalInfo2MonitorPub.publish(coalInfoMsg);
@@ -274,6 +288,8 @@ void RosThread::manageCoalition()
             waitingTasks.remove(0);
 
             currentState = CS_IDLE;
+
+            qDebug()<<"currentCoalitionState: CS_IDLE <- CS_WAITING_TASK_RESPONSE_FROM_COORDINATOR";
 
             std_msgs::UInt8 coalInfoMsg;
             coalInfoMsg.data = currentState;
@@ -312,6 +328,8 @@ void RosThread::manageCoalition()
             sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING);
 
             currentState = CS_HANDLING;
+
+            qDebug()<<"currentCoalitionState: CS_HANDLING <- CS_SUCCORING";
 
             std_msgs::UInt8 coalInfoMsg;
             coalInfoMsg.data = currentState;
@@ -713,6 +731,8 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
 
             sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
 
+            qDebug()<<"currentCoalitionState: CS_STOP <- "<<currentState;
+
             currentState = CS_STOP;
 
             std_msgs::UInt8 coalInfoMsg;
@@ -834,7 +854,9 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
         {
             sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
 
-            currentState = CS_IDLE;
+            qDebug()<<"currentCoalitionState: CS_IDLE <- "<<currentState;
+
+            currentState = CS_IDLE;           
 
             std_msgs::UInt8 coalInfoMsg;
             coalInfoMsg.data = currentState;
@@ -844,6 +866,8 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
         {
 
             sendCmd2Robots(CMD_L2R_MOVE_TO_TASK_SITE);
+
+            qDebug()<<"currentCoalitionState: CS_SUCCORING <- "<<currentState;
 
             currentState = CS_SUCCORING;
 
@@ -901,6 +925,8 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
         {
             sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
 
+            qDebug()<<"currentCoalitionState: CS_IDLE <- "<<currentState;
+
             currentState = CS_IDLE;
 
             std_msgs::UInt8 coalInfoMsg;
@@ -910,6 +936,8 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
         else
         {
             sendCmd2Robots(CMD_L2R_MOVE_TO_TASK_SITE);
+
+            qDebug()<<"currentCoalitionState: CS_SUCCORING <- "<<currentState;
 
             currentState = CS_SUCCORING;
 
