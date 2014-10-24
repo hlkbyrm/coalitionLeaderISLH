@@ -724,21 +724,26 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
         if (msgStr == "START-MISSION")
         {
             startMission = true;
+
+            qDebug()<<"currentCoalitionState: CS_IDLE <- CS_STOP";
+
+            currentState = CS_IDLE;
         }
         else if (msgStr == "STOP-MISSION")
         {
             startMission = false;
 
-            sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
-
             qDebug()<<"currentCoalitionState: CS_STOP <- "<<currentState;
 
             currentState = CS_STOP;
-
-            std_msgs::UInt8 coalInfoMsg;
-            coalInfoMsg.data = currentState;
-            coalInfo2MonitorPub.publish(coalInfoMsg);
         }
+
+         sendCmd2Robots(CMD_L2R_START_OR_STOP_MISSION);
+
+         std_msgs::UInt8 coalInfoMsg;
+         coalInfoMsg.data = currentState;
+         coalInfo2MonitorPub.publish(coalInfoMsg);
+
     }
     else if (msg.messageTypeID == CMD_C2L_COALITION_MEMBERS)
     {
