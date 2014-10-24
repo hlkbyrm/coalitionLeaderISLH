@@ -143,6 +143,10 @@ private:
 
      int ownRobotID;
 
+     double ownRobotRadius;
+
+     QVector <double> ownRobotResources;
+
      int coordinatorRobotID;
 
      int newLeaderID;

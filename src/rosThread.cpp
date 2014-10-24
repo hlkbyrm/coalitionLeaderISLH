@@ -1128,6 +1128,8 @@ void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
             coalMembers.append(robot);
         }
 
+        calcCoalTotalResources();
+
         waitingTasks.clear();
 
         for(; messagePartIdx < messageParts.size(); messagePartIdx++){
@@ -1150,6 +1152,38 @@ void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
 
             waitingTasks.append(task);
         }
+    }
+    else
+    {
+        // SPLITted from its coalition. Now it is a signleton coalition
+        isCoalitionLeader = true;
+
+        coalMembers.clear();
+        waitingTasks.clear();
+
+        robotProp robotTmp;
+
+        robotTmp.robotID = ownRobotID;
+        robotTmp.inGoalPose = 1;
+        robotTmp.inTaskSite = -1;
+
+        robotTmp.pose.X = -1;
+        robotTmp.pose.Y = -1;
+
+        robotTmp.goalPose.X = -1;
+        robotTmp.goalPose.Y = -1;
+
+        robotTmp.taskSitePose.X = -1;
+        robotTmp.taskSitePose.Y = -1;
+
+        robotTmp.radius = ownRobotRadius;
+
+        robotTmp.resources = QVector <double>(ownRobotResources);
+
+        coalMembers.append(robotTmp);
+
+        calcCoalTotalResources();
+
     }
 }
 
@@ -1205,6 +1239,7 @@ bool RosThread::readConfigFile(QString filename)
 
         double radiusTmp = result["robotRadius"].toDouble();
 
+        ownRobotRadius = radiusTmp;
 
         // initialize the singleton coalition
 
@@ -1214,6 +1249,7 @@ bool RosThread::readConfigFile(QString filename)
         for(int i = 0; i < resourceStrList.size();i++)
         {
            resources.append(resourceStrList.at(i).toDouble());
+           ownRobotResources.append(resourceStrList.at(i).toDouble());
         }
 
         robotProp robotTmp;
