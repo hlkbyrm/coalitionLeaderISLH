@@ -1189,6 +1189,8 @@ void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
 
         calcCoalTotalResources();
 
+        currentState = CS_WAITING_GOAL_POSE;
+
     }
 }
 
