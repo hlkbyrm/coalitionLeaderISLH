@@ -1107,7 +1107,7 @@ void RosThread::handleTaskInfoMessage(ISLH_msgs::taskInfoFromRobotMessage msg)
 
 void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
 {
-    if (msg.infoTypeID == 1)
+    if (msg.infoTypeID == CMD_L2R_LEADER_CHANGED)
     {
         isCoalitionLeader = true;
 
@@ -1158,7 +1158,7 @@ void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
             waitingTasks.append(task);
         }
     }
-    else
+    else if (msg.infoTypeID == CMD_L2R_SPLIT_FROM_COALITION)
     {
         // SPLITted from its coalition. Now it is a signleton coalition
         isCoalitionLeader = true;
