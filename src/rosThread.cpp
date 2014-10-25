@@ -165,9 +165,6 @@ void RosThread::manageCoalition()
                         // consider the oldest task
                         handlingTask = waitingTasks.at(0);
 
-                        // remove this task from waitingTasks
-                        waitingTasks.remove(0);
-
                         // send start command to the coalition members
                         sendCmd2Robots(CMD_L2R_START_HANDLING);
 
@@ -176,6 +173,9 @@ void RosThread::manageCoalition()
 
                         // inform the coordinator of the starting of the handling
                         sendTaskInfo2Coordinator(INFO_L2C_START_HANDLING_WITH_TASK_INFO);
+
+                        // remove this task from waitingTasks
+                        waitingTasks.remove(0);
 
                         currentState = CS_HANDLING;
 
