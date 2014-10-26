@@ -436,6 +436,9 @@ void RosThread::check4ExcessiveResource()
                 }
             }
 
+            // split the selected robots from the coalition
+            coalMembers = QVector <robotProp>(coalMembersTmp1);
+
             // inform the splitted robots of the splittng operation
             sendCmd2Robots(CMD_L2R_SPLIT_FROM_COALITION);
 
@@ -589,6 +592,8 @@ void RosThread::sendCmd2Robots(int cmdType)
         for(int i = 0; i < splitRobotIDList.size();i++)
         {
             msg.receiverRobotID.push_back(splitRobotIDList.at(i));
+
+
         }
     }
     else if (cmdType == CMD_L2R_LEADER_CHANGED)
