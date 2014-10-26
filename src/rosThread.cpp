@@ -67,6 +67,8 @@ void RosThread::work()
 
     coalInfo2MonitorPub = n.advertise<std_msgs::UInt8>("coalitionLeaderISLH/coalStateInfo2Monitor",queueSize);
 
+    messagePoseListSub = n.subscribe("localizationISLH/poseList",1,&RosThread::handlePoseList, this);
+
     while(ros::ok())
     {
 
@@ -1194,6 +1196,30 @@ void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
     }
 }
 
+// handle incoming robot poses
+void RosThread::handlePoseList(ISLH_msgs::robotPositions robotPoseListMsg)
+{
+
+    if (robotPoseListMsg.positions.size() != totalNumOfRobots)
+    {
+        qDebug() << "incoming robot positions are not consistent with the number of robots";
+    }
+    else
+    {
+        for(int robID=0; robID<robotPoseListMsg.positions.size(); robID++)
+        {
+            for(int robIndx = 0; robIndx < coalMembers.size();robIndx++)
+            {
+                if (coalMembers.at(robIndx).robotID == (robID+1))
+                {
+                    coalMembers[robIndx].pose.X = robotPoseListMsg.positions.at(robID).x;
+                    coalMembers[robIndx].pose.Y = robotPoseListMsg.positions.at(robID).y;
+                }
+            }
+        }
+    }
+}
+
 // Reads the config file
 bool RosThread::readConfigFile(QString filename)
 {
@@ -1218,6 +1244,9 @@ bool RosThread::readConfigFile(QString filename)
     }
     else
     {
+        totalNumOfRobots = result["numrobots"].toInt();
+        qDebug()<< " total number of robots " << totalNumOfRobots;
+
         cvfParams.w1 = result["cvf-w1"].toDouble();
         qDebug()<< " w1 " << cvfParams.w1;
 

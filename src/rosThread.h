@@ -11,6 +11,7 @@
 #include <ISLH_msgs/cmd2RobotsFromLeaderMessage.h>
 #include <ISLH_msgs/taskInfoFromRobotMessage.h>
 #include <ISLH_msgs/newLeaderMessage.h>
+#include <ISLH_msgs/robotPositions.h>
 #include <std_msgs/UInt8.h>
 
 enum CoalitionStatus
@@ -137,6 +138,9 @@ private:
 
      ros::Publisher coalInfo2MonitorPub;
 
+     ros::Subscriber messagePoseListSub;
+
+
      bool isCoalitionLeader;
 
      bool startMission;
@@ -144,6 +148,8 @@ private:
      int ownRobotID;
 
      double ownRobotRadius;
+
+     int totalNumOfRobots; // in the experiment
 
      QVector <double> ownRobotResources;
 
@@ -197,6 +203,8 @@ private:
      void handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage msg);
 
      void handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg);
+
+     void handlePoseList(ISLH_msgs::robotPositions robotPoseListMsg);
 
      bool readConfigFile(QString filename);
 
