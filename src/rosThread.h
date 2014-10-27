@@ -157,6 +157,8 @@ private:
 
      int newLeaderID;
 
+     bool leaderSplitted; // true when the leader is removed from the coalition
+
      int queueSize;
 
      double targetSiteRadius;

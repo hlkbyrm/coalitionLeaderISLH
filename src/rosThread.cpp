@@ -20,6 +20,8 @@ RosThread::RosThread()
     // at the beginning of the mission, since each robot is singleton coalition,
     // all the robots are acting as a coalition leader.
     isCoalitionLeader = true;
+
+    leaderSplitted = false;
 }
 
 
@@ -138,7 +140,7 @@ void RosThread::manageCoalition()
                 // this robot (leader) is splitted from the coalition.
                 check4ExcessiveResource();
 
-                if (isCoalitionLeader==true)
+                if (!leaderSplitted)
                 {
                     // check whether all the robot are in the task site
 
@@ -200,6 +202,19 @@ void RosThread::manageCoalition()
                         coalInfoMsg.data = currentState;
                         coalInfo2MonitorPub.publish(coalInfoMsg);
                     }
+                }
+                else
+                {
+                    leaderSplitted = false;
+
+                    qDebug()<<"the leader is splitted from the coalition!!! currentCoalitionState:"<<currentState;
+
+                    waitingTasks.clear(); // waiting tasks were sent to the new leader
+
+                    std_msgs::UInt8 coalInfoMsg;
+                    coalInfoMsg.data = currentState;
+                    coalInfo2MonitorPub.publish(coalInfoMsg);
+
                 }
             }
             else
@@ -359,7 +374,7 @@ void RosThread::check4ExcessiveResource()
         // current coalition value
         double coalVal = calcCoalValue(coalMembers);
 
-        int leaderSplitted = 0;
+        //int leaderSplitted = 0;
 
         int changeAvail = 1;
 
@@ -379,7 +394,7 @@ void RosThread::check4ExcessiveResource()
                 {
                     if (coalMembersTmp1.at(robotIndx).robotID == ownRobotID)
                     {
-                        leaderSplitted = 1;
+                        leaderSplitted = true;
                     }
                     // if the robot to be splitted is leader, ignore this splitting
                    // if (coalMembersTmp.at(robotIndx).robotID != ownRobotID)
@@ -444,13 +459,13 @@ void RosThread::check4ExcessiveResource()
 
             //check whether one of the splitted robots is the coalition leader
             // if yes, select the robot with the smallest robotID as the coalition leader
-            if (leaderSplitted==1)
+            if (leaderSplitted)
             {
                 sendCmd2Robots(CMD_L2R_LEADER_CHANGED);
 
                 sendTaskInfo2Coordinator(INFO_L2C_SPLITTING_AND_LEADER_CHANGED);
 
-                isCoalitionLeader = false;
+                //isCoalitionLeader = false;
 
             }
             else
