@@ -160,7 +160,6 @@ void RosThread::manageCoalition()
                         {
                             taskSiteOK = taskSiteOK + 1;
                         }
-
                     }
 
 
@@ -369,6 +368,8 @@ void RosThread::check4ExcessiveResource()
 
         QVector <robotProp> coalMembersTmp1, coalMembersTmp2;//coalMmbrsTmp;
 
+        robotProp myRobot;
+
         coalMembersTmp1 = QVector <robotProp>(coalMembers);
 
         // current coalition value
@@ -395,16 +396,18 @@ void RosThread::check4ExcessiveResource()
                     if (coalMembersTmp1.at(robotIndx).robotID == ownRobotID)
                     {
                         leaderSplitted = true;
+
+                        myRobot = robotProp(coalMembersTmp1.at(robotIndx));
                     }
                     // if the robot to be splitted is leader, ignore this splitting
-                   // if (coalMembersTmp.at(robotIndx).robotID != ownRobotID)
+                    // if (coalMembersTmp.at(robotIndx).robotID != ownRobotID)
                     //{
-                        splittedRobotIndx = robotIndx;
-                        coalVal = coalValTemp;
-                        changeAvail = 1;
+                    splittedRobotIndx = robotIndx;
+                    coalVal = coalValTemp;
+                    changeAvail = 1;
 
-                        break;
-                   // }
+                    break;
+                    // }
                 }
             }
 
@@ -420,7 +423,6 @@ void RosThread::check4ExcessiveResource()
 
                 // remove the splitted robot from the coalition
                 coalMembersTmp1.remove(splittedRobotIndx);
-
             }
         }
 
@@ -451,9 +453,6 @@ void RosThread::check4ExcessiveResource()
                 }
             }
 
-            // split the selected robots from the coalition
-            coalMembers = QVector <robotProp>(coalMembersTmp1);
-
             // inform the splitted robots of the splittng operation
             sendCmd2Robots(CMD_L2R_SPLIT_FROM_COALITION);
 
@@ -467,13 +466,19 @@ void RosThread::check4ExcessiveResource()
 
                 //isCoalitionLeader = false;
 
+                // the leader is removed from the coalition, then now its coalition consists of only itself
+                coalMembers.clear();
+                coalMembers.append(myRobot);
+                calcCoalTotalResources();
             }
             else
             {
                 // inform the coordinator of the splittings
                 sendTaskInfo2Coordinator(INFO_L2C_SPLITTING);
-            }
 
+                // split the selected robots from the coalition
+                coalMembers = QVector <robotProp>(coalMembersTmp1);
+            }
         }
 
     }
@@ -1178,6 +1183,8 @@ void RosThread::handleNewLeaderMessage(ISLH_msgs::newLeaderMessage msg)
 
             waitingTasks.append(task);
         }
+
+        currentState = CS_IDLE;
     }
     else if (msg.infoTypeID == CMD_L2R_SPLIT_FROM_COALITION)
     {
