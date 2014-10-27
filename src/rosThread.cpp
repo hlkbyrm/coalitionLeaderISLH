@@ -606,9 +606,8 @@ void RosThread::sendCmd2Robots(int cmdType)
 
         for(int i = 0; i < splitRobotIDList.size();i++)
         {
-            msg.receiverRobotID.push_back(splitRobotIDList.at(i));
-
-
+            if (splitRobotIDList.at(i) != ownRobotID)
+                msg.receiverRobotID.push_back(splitRobotIDList.at(i));
         }
     }
     else if (cmdType == CMD_L2R_LEADER_CHANGED)
