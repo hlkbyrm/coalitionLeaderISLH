@@ -954,6 +954,9 @@ void RosThread::handleCmdFromCoordinator(ISLH_msgs::cmdFromCoordinatorMessage ms
 
         if (msg.messageTypeID == CMD_C2L_NEW_GOAL_POSES)
         {
+            // to clear waitingTasks, we can avoid sending a task info twice to the coordinator
+            waitingTasks.clear();
+
             sendCmd2Robots(CMD_L2R_MOVE_TO_GOAL_POSE);
 
             qDebug()<<"currentCoalitionState: CS_IDLE <- "<<currentState;
@@ -1046,7 +1049,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
             if (i<splitRobotIDList.size()-1)
                 splittingMsg.append(",");
         }
-
+/*
         // if this robot, coalition leader, is splitted,
         // the splitted leader ID is added to the end of splitRobotIDList
         if (infoType == INFO_L2C_SPLITTING_AND_LEADER_CHANGED)
@@ -1054,7 +1057,7 @@ void RosThread::sendTaskInfo2Coordinator(int infoType)
             splittingMsg.append(",");
             splittingMsg.append(QString::number(newLeaderID));
         }
-
+*/
         msg.senderRobotID = ownRobotID;
 
         // this message contains the robot IDs to be splitted from the coalition
